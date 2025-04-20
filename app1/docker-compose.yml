@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  app1:
+    image: ${REPOSITORY}/${IMAGE_TAG}:${TAG_VERSION}
+    container_name: app1_container
+    ports:
+      - "${FASTAPI_PORT}:${FASTAPI_PORT}"
+    environment:
+      - FASTAPI_PORT=${FASTAPI_PORT}
+    volumes:
+      - .:/app
+  
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+  
+  worker:
+    image: dateaeacreu2n.azurecr.io/collibra-gm-embedder:v1.0.0
+    command: sh -c "poetry run celery -A app.celery_worker.celery_app worker --loglevel=INFO"
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_BACKEND_URL=redis://redis:6379/1
+
+  
+  flower:
+    image: mher/flower
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      - redis
